@@ -1,0 +1,1007 @@
+
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mi OS Web — Completo</title>
+  <link rel="stylesheet" href="OS.css" />
+  <script defer src="OS.js"></script>
+  <style>
+
+:root{
+  --bg:#111218; --window:#1f2226; --topbar:#2b2f33; --accent:#16a085; --muted:#9aa;
+  --text:#eaeef0; --glass:rgba(255,255,255,0.03);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+
+/* Ventanas */
+.ventana{position:absolute;display:block;width:420px;background:var(--window);border-radius:8px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 10px 30px rgba(0,0,0,0.6);overflow:hidden}
+.ventana.small{width:420px}
+.ventana.grande{width:620px;height:460px}
+.topbar{background:linear-gradient(180deg,var(--topbar),#333);padding:8px 10px;display:flex;align-items:center;justify-content:space-between;cursor:grab;user-select:none;touch-action:none}
+.topbar span{font-weight:600}
+.topbar-controls{display:flex;gap:6px}
+.topbar-controls button{background:transparent;border:none;color:var(--text);padding:4px 8px;border-radius:6px;cursor:pointer}
+.topbar:active{cursor:grabbing}
+.contenido{padding:12px;font-size:14px}
+.apps-lista{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.apps-lista button{background:#2b2b2b;border:none;padding:8px 10px;border-radius:8px;color:var(--text);cursor:pointer}
+.browser-controls{display:flex;gap:8px;align-items:center}
+.browser-controls input{flex:1;padding:8px;border-radius:8px;border:none;background:#222;color:var(--text)}
+.browser-controls button{padding:8px 12px;border-radius:8px;border:none;background:var(--accent);color:#042;cursor:pointer}
+.hint{color:var(--muted);font-size:12px;margin-top:8px}
+
+/* Terminal */
+.term-body{font-family:monospace}
+.term-output{height:160px;overflow:auto;background:#05060a;padding:8px;border-radius:6px;border:1px solid #0b1720;color:#cfe8d6}
+.term-line{white-space:pre-wrap;margin-bottom:6px}
+.term-input-line{display:flex;gap:8px;align-items:center;margin-top:8px}
+.prompt{color:#66e0a3;font-weight:700}
+.term-input{flex:1;background:transparent;border:none;color:inherit;outline:none;font-family:monospace}
+
+/* File list */
+#file-list{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.file-item{background:#141618;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
+
+/* Player */
+#player-area video,#player-area audio{border-radius:6px;background:#000}
+#playlist{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.play-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:6px;background:#141618}
+
+/* Workspace */
+.workspace-editor { display:flex; gap:8px; height:320px; }
+.editor-col { flex:1; display:flex; flex-direction:column; gap:6px; min-width:0; }
+.editor-col textarea { flex:1; width:100%; resize:vertical; padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.04); background:#0f1113; color:var(--text); font-family:monospace; font-size:13px; }
+.workspace-controls { display:flex; gap:8px; margin-top:8px; align-items:center; }
+.workspace-preview { border:1px solid rgba(255,255,255,0.04); height:260px; border-radius:6px; overflow:hidden; background:#fff; }
+
+/* Taskbar */
+.barra-inferior{position:fixed;left:0;right:0;bottom:0;height:56px;background:#0f1113;display:flex;align-items:center;justify-content:space-between;padding:6px 12px;gap:12px;z-index:9999;box-shadow:0 -8px 24px rgba(0,0,0,0.6)}
+.taskbar-left{display:flex;align-items:center;gap:8px}
+.taskbar-left input{padding:8px;border-radius:8px;border:none;background:#161718;color:var(--text);width:220px}
+.taskbar-left button{background:#222;border:none;padding:8px 10px;border-radius:8px;color:var(--text);cursor:pointer}
+.taskbar-center{display:flex;align-items:center;gap:6px;flex:1;justify-content:center;overflow:auto;padding:0 8px}
+.task-btn{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#202225;border-radius:8px;color:var(--text);cursor:pointer;border:none;min-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.task-btn.active{background:linear-gradient(90deg,var(--accent),#16a085);color:#042;box-shadow:0 6px 18px rgba(0,0,0,0.6)}
+.taskbar-right{display:flex;align-items:center;gap:8px}
+.reloj{min-width:120px;text-align:right;color:var(--muted);font-weight:600}
+
+/* Responsive */
+@media (max-width:820px){
+  .ventana{width:90%;left:5% !important;top:60px !important}
+  .taskbar-left input{width:120px}
+  .taskbar-center{display:none}
+}
+@media (max-width:420px){
+  .topbar span{font-size:14px}
+  .barra-inferior{height:64px;padding:10px}
+  .taskbar-left input{display:none}
+}
+  </style>
+</head>
+<body>
+
+  <!-- Menú principal (inicio) -->
+  <div id="menu-principal" class="ventana grande" data-window style="left:60px;top:60px;">
+    <div class="topbar" onpointerdown="startDrag(event,'menu-principal')">
+      <span>🌟 Menú Principal</span>
+      <div class="topbar-controls">
+        <button onclick="minimizar('menu-principal')">—</button>
+        <button onclick="cerrar('menu-principal')">✖</button>
+      </div>
+    </div>
+    <div class="contenido">
+      <h2>Aplicaciones</h2>
+      <div class="apps-lista">
+        <h3>welcome 0.S</h3>
+        <button onclick="abrir('browser')">🌐 Navegador</button>
+        <button onclick="abrir('archivos')">📁 Archivos</button>
+        <button onclick="abrir('media')">▶ Reproductor</button>
+        <button onclick="abrir('terminal')">⌘ Terminal</button>
+        <button onclick="abrir('config')">⚙️ Configuración</button>
+        <button onclick="crearVentana('Nota','<textarea style=&quot;width:100%;height:120px;&quot; placeholder=&quot;Escribe...&quot;></textarea>')">📝 Nota</button>
+        <button onclick="abrirWorkspace()">🧩 Workspace</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Browser -->
+  <div id="browser" class="ventana small" data-window style="display:none;left:120px;top:80px;">
+    <div class="topbar" onpointerdown="startDrag(event,'browser')">
+      <span>🌐 Navegador</span>
+      <div class="topbar-controls">
+        <button onclick="minimizar('browser')">—</button>
+        <button onclick="cerrar('browser')">✖</button>
+      </div>
+    </div>
+    <div class="contenido">
+      <div class="browser-controls">
+        <input id="url-browser" placeholder="URL o búsqueda..." onkeydown="if(event.key==='Enter') cargarSitio()" />
+        <button onclick="cargarSitio()">Ir</button>
+      </div>
+      <iframe id="visor-browser" sandbox="allow-same-origin allow-forms allow-scripts" title="Visor"></iframe>
+      <p class="hint">Si un sitio bloquea iframe, verás espacio en blanco.</p>
+    </div>
+  </div>
+
+  <!-- Archivos -->
+  <div id="archivos" class="ventana small" data-window style="display:none;left:180px;top:120px;">
+    <div class="topbar" onpointerdown="startDrag(event,'archivos')">
+      <span>📁 Archivos</span>
+      <div class="topbar-controls">
+        <button onclick="minimizar('archivos')">—</button>
+        <button onclick="cerrar('archivos')">✖</button>
+      </div>
+    </div>
+    <div class="contenido">
+      <p>Selecciona archivos o abre carpeta (si el navegador lo soporta).</p>
+      <div class="file-controls">
+        <input type="file" id="file-input" multiple onchange="leerArchivos(event)" />
+        <button onclick="openDirectory()">📂 Abrir carpeta</button>
+      </div>
+      <div id="file-list"></div>
+    </div>
+  </div>
+
+  <!-- Media player -->
+  <div id="media" class="ventana small" data-window style="display:none;left:240px;top:160px;">
+    <div class="topbar" onpointerdown="startDrag(event,'media')">
+      <span>▶ Reproductor</span>
+      <div class="topbar-controls">
+        <button onclick="minimizar('media')">—</button>
+        <button onclick="cerrar('media')">✖</button>
+      </div>
+    </div>
+    <div class="contenido">
+      <input type="file" id="media-input" accept="audio/*,video/*" multiple onchange="cargarMedia(event)" />
+      <div id="playlist"></div>
+      <div id="player-area">
+        <video id="video-player" controls style="width:100%;display:none;"></video>
+        <audio id="audio-player" controls style="width:100%;display:none;"></audio>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terminal -->
+  <div id="terminal" class="ventana small" data-window style="display:none;left:300px;top:200px;">
+    <div class="topbar" onpointerdown="startDrag(event,'terminal')">
+      <span>⌘ Terminal</span>
+      <div class="topbar-controls">
+        <button onclick="minimizar('terminal')">—</button>
+        <button onclick="cerrar('terminal')">✖</button>
+      </div>
+    </div>
+    <div class="contenido term-body">
+      <div id="term-output" class="term-output"></div>
+      <div class="term-input-line">
+        <span class="prompt">user@webos:~$</span>
+        <input id="term-input" class="term-input" autocomplete="off" />
+      </div>
+      <div style="margin-top:8px">
+        <button onclick="runRemoteExample()">Ejecutar npm (ejemplo)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Configuración -->
+  <div id="config" class="ventana small" data-window style="display:none;left:360px;top:80px;">
+    <div class="topbar" onpointerdown="startDrag(event,'config')">
+      <span>⚙️ Configuración</span>
+      <div class="topbar-controls">
+        <button onclick="minimizar('config')">—</button>
+        <button onclick="cerrar('config')">✖</button>
+      </div>
+    </div>
+    <div class="contenido">
+      <label><input id="persist-state" type="checkbox" /> Guardar posiciones (localStorage)</label>
+      <div style="margin-top:8px">
+        <label>Tema:
+          <select id="theme-select" onchange="applyTheme(this.value)">
+            <option value="dark">Oscuro</option>
+            <option value="light">Claro</option>
+          </select>
+        </label>
+      </div>
+      <div style="margin-top:8px">
+        <label><input id="show-fps" type="checkbox" /> Mostrar FPS</label>
+      </div>
+      <div style="margin-top:8px">
+        <button onclick="exportConfig()">Exportar configuración</button>
+        <button onclick="importConfig()">Importar configuración</button>
+        <button onclick="resetPositions()">Reset posiciones</button>
+      </div>
+      <div style="margin-top:8px;font-size:13px;color:#aaa">
+        Nota: File System Access API tiene soporte variable.
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenedor para ventanas dinámicas -->
+  <div id="windows-container"></div>
+
+  <!-- Taskbar -->
+  <div class="barra-inferior" id="taskbar">
+    <div class="taskbar-left">
+      <button onclick="abrir('menu-principal')" class="inicio">🪟 Inicio</button>
+      <input id="buscador" placeholder="Buscar o escribir URL..." onkeydown="if(event.key==='Enter') quickSearch()" />
+      <button onclick="quickSearch()">🔍</button>
+    </div>
+    <div class="taskbar-center" id="taskbar-windows"></div>
+    <div class="taskbar-right">
+      <button onclick="mostrarEscritorio()" title="Mostrar escritorio">🗔</button>
+      <div id="fps" class="reloj" title="FPS y uso"></div>
+      <div id="reloj" class="reloj" title="Hora Centro México"></div>
+    </div>
+  </div>
+
+<!---
+### OS.js-------------------------->
+<script>
+///```js
+/* OS.js - Sistema principal completo y optimizado
+   - versión lista para pegar (index.html + OS.css)
+   - incluye workspace, taskbar, terminal, media, file reader, persistencia, FPS, theme
+*/
+
+/* ---------- Estado global ---------- */
+let zIndexCounter = 100;
+let windowCount = 0;
+const windowsStateKey = 'mi_os_windows_state';
+let persistState = false;
+let dragData = null;
+
+/* ---------- Iniciar (DOMContentLoaded) ---------- */
+document.addEventListener('DOMContentLoaded', () => {
+  // reloj y fps
+  setInterval(actualizarReloj, 1000);
+  actualizarReloj();
+  initFPS();
+
+  // persist checkbox bind
+  const chk = document.getElementById('persist-state');
+  if (chk) {
+    persistState = chk.checked;
+    chk.addEventListener('change', () => {
+      persistState = chk.checked;
+      if (!persistState) localStorage.removeItem(windowsStateKey);
+      savePositions();
+    });
+  }
+
+  // registrar ventanas estáticas en taskbar
+  document.querySelectorAll('[data-window]').forEach(w => {
+    if (!w.id) w.id = 'win-' + Math.random().toString(36).slice(2,8);
+    registerWindowForTaskbar(w, { title: w.querySelector('.topbar span')?.textContent || w.id });
+    // attach pointerdown to static topbars if not set inline
+    const tb = w.querySelector('.topbar');
+    if (tb && !tb._hasPointer) { tb.onpointerdown = e => startDrag(e, w.id); tb._hasPointer = true; }
+  });
+
+  // restaurar posiciones
+  const saved = localStorage.getItem(windowsStateKey) || sessionStorage.getItem(windowsStateKey);
+  if (saved) {
+    try {
+      const obj = JSON.parse(saved);
+      Object.keys(obj).forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.style.left = obj[id].left; el.style.top = obj[id].top; el.style.display = obj[id].display || ''; }
+      });
+    } catch (e) { console.warn('No se cargó estado:', e); }
+  }
+
+  // iniciar terminal
+  initTerminal();
+
+  // show/hide fps checkbox (if exists)
+  const fpsChk = document.getElementById('show-fps');
+  if (fpsChk) fpsChk.addEventListener('change', () => document.getElementById('fps').style.display = fpsChk.checked ? 'block' : 'none');
+});
+
+/* ---------- Ventanas: abrir / cerrar / minimizar ---------- */
+function abrir(id) {
+  const el = document.getElementById(id);
+  if (!el) return console.warn('No existe ventana', id);
+  el.style.display = 'block';
+  bringToFront(el);
+  updateTaskActiveState();
+}
+function cerrar(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = 'none';
+  savePositions();
+  updateTaskActiveState();
+}
+function minimizar(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  // resource optimization: if the window contains an iframe, unload it on minimize
+  const iframe = el.querySelector('iframe');
+  if (iframe) {
+    iframe.dataset._backupSrc = iframe.src || iframe.srcdoc || '';
+    iframe.src = 'about:blank';
+  }
+  el.style.display = 'none';
+  savePositions();
+  updateTaskActiveState();
+}
+function restore(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = 'block';
+  const iframe = el.querySelector('iframe');
+  if (iframe && iframe.dataset && iframe.dataset._backupSrc) {
+    const val = iframe.dataset._backupSrc;
+    // if was srcdoc (blob), set srcdoc else src
+    if (val.startsWith('<!doctype') || val.startsWith('<html')) iframe.srcdoc = val;
+    else iframe.src = val;
+    delete iframe.dataset._backupSrc;
+  }
+  bringToFront(el);
+  updateTaskActiveState();
+}
+function bringToFront(el) {
+  zIndexCounter++;
+  el.style.zIndex = zIndexCounter;
+  setActiveWindow(el.id);
+  savePositions();
+}
+
+/* ---------- Drag universal con Pointer Events ---------- */
+function startDrag(e, id) {
+  const evt = e.type.startsWith('touch') && e.touches ? e.touches[0] : e;
+  const el = document.getElementById(id);
+  if (!el) return;
+  bringToFront(el);
+  const rect = el.getBoundingClientRect();
+  dragData = {
+    el,
+    startX: evt.clientX,
+    startY: evt.clientY,
+    origLeft: rect.left,
+    origTop: rect.top
+  };
+  document.addEventListener('pointermove', onDrag);
+  document.addEventListener('pointerup', stopDrag);
+  document.addEventListener('pointercancel', stopDrag);
+  e.preventDefault();
+}
+function onDrag(e) {
+  if (!dragData) return;
+  const dx = e.clientX - dragData.startX;
+  const dy = e.clientY - dragData.startY;
+  dragData.el.style.left = (dragData.origLeft + dx) + 'px';
+  dragData.el.style.top  = (dragData.origTop  + dy) + 'px';
+}
+function stopDrag() {
+  if (!dragData) return;
+  document.removeEventListener('pointermove', onDrag);
+  document.removeEventListener('pointerup', stopDrag);
+  document.removeEventListener('pointercancel', stopDrag);
+  dragData = null;
+  savePositions();
+}
+window.startDrag = startDrag;
+
+/* ---------- Crear ventanas dinámicas ---------- */
+function crearVentana(titulo, htmlContenido) {
+  windowCount++;
+  const id = 'vent-' + windowCount;
+  const win = document.createElement('div');
+  win.className = 'ventana small';
+  win.id = id;
+  win.setAttribute('data-window','');
+  win.style.display = 'block';
+  win.style.left = (100 + windowCount * 18) + 'px';
+  win.style.top = (100 + windowCount * 18) + 'px';
+  win.style.zIndex = ++zIndexCounter;
+
+  const top = document.createElement('div');
+  top.className = 'topbar';
+  top.onpointerdown = e => startDrag(e, id);
+
+  const span = document.createElement('span');
+  span.textContent = titulo;
+
+  const controls = document.createElement('div');
+  controls.className = 'topbar-controls';
+
+  const btnMin = document.createElement('button');
+  btnMin.className = 'minimizar';
+  btnMin.textContent = '—';
+  btnMin.onclick = () => { win.style.display = 'none'; savePositions(); };
+
+  const btnClose = document.createElement('button');
+  btnClose.className = 'cerrar';
+  btnClose.textContent = '✖';
+  btnClose.onclick = () => { win.remove(); removeTaskButton(id); savePositions(); };
+
+  controls.append(btnMin, btnClose);
+  top.append(span, controls);
+
+  const cont = document.createElement('div');
+  cont.className = 'contenido';
+  cont.innerHTML = htmlContenido;
+
+  win.append(top, cont);
+  document.body.appendChild(win);
+
+  registerWindowForTaskbar(win, { title: titulo });
+  savePositions();
+  return id;
+}
+window.crearVentana = crearVentana;
+
+/* ---------- Taskbar management ---------- */
+function taskbarContainer() { return document.getElementById('taskbar-windows'); }
+
+function registerWindowForTaskbar(winEl, opts = {}) {
+  if (!winEl || !winEl.id) return;
+  if (document.getElementById('task-btn-' + winEl.id)) return;
+
+  const btn = document.createElement('button');
+  btn.className = 'task-btn';
+  btn.id = 'task-btn-' + winEl.id;
+
+  const iconSpan = document.createElement('span');
+  iconSpan.className = 'icon';
+  iconSpan.innerHTML = opts.icon || '▣';
+
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = opts.title || (winEl.querySelector('.topbar span')?.textContent || winEl.id);
+
+  btn.append(iconSpan, label);
+  btn.onclick = () => {
+    const el = document.getElementById(winEl.id);
+    if (!el) return;
+    if (getComputedStyle(el).display === 'none') { restore(winEl.id); }
+    else { minimizar(winEl.id); }
+  };
+  btn.oncontextmenu = (e) => {
+    e.preventDefault();
+    const choice = confirm('¿Cerrar ventana "' + label.textContent + '"? Aceptar = cerrar, Cancelar = minimizar/restaurar');
+    if (choice) { cerrar(winEl.id); removeTaskButton(winEl.id); }
+    else toggleMinimize(winEl.id);
+  };
+
+  taskbarContainer().appendChild(btn);
+  updateTaskActiveState();
+}
+
+function removeTaskButton(winId) {
+  const btn = document.getElementById('task-btn-' + winId);
+  if (btn) btn.remove();
+}
+function toggleMinimize(winId) {
+  const el = document.getElementById(winId);
+  if (!el) return;
+  if (el.style.display === 'none' || getComputedStyle(el).display === 'none') {
+    restore(winId);
+  } else {
+    minimizar(winId);
+  }
+  savePositions();
+  updateTaskActiveState();
+}
+function setActiveWindow(winId) {
+  document.querySelectorAll('.task-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('task-btn-' + winId);
+  if (btn) btn.classList.add('active');
+}
+function clearActiveWindow(winId) {
+  const btn = document.getElementById('task-btn-' + winId);
+  if (btn) btn.classList.remove('active');
+}
+function updateTaskActiveState() {
+  document.querySelectorAll('[data-window]').forEach(w => {
+    if (!w.id) return;
+    if (!document.getElementById('task-btn-' + w.id)) registerWindowForTaskbar(w, { title: w.querySelector('.topbar span')?.textContent || w.id });
+  });
+  const maxZ = getMaxZIndex();
+  document.querySelectorAll('[data-window]').forEach(w => {
+    if (parseInt(w.style.zIndex || 0, 10) === maxZ) setActiveWindow(w.id);
+  });
+}
+function getMaxZIndex() {
+  let max = 0;
+  document.querySelectorAll('[data-window]').forEach(w => { const z = parseInt(w.style.zIndex || 0, 10); if (z > max) max = z; });
+  return max;
+}
+function mostrarEscritorio() {
+  const windows = document.querySelectorAll('[data-window]');
+  let anyVisible = false;
+  windows.forEach(w => { if (w.style.display !== 'none' && getComputedStyle(w).display !== 'none') anyVisible = true; });
+  if (anyVisible) {
+    windows.forEach(w => { w.dataset.prevDisplay = w.style.display || ''; w.style.display = 'none'; });
+  } else {
+    windows.forEach(w => { w.style.display = w.dataset.prevDisplay || 'block'; delete w.dataset.prevDisplay; });
+  }
+  updateTaskActiveState();
+}
+window.mostrarEscritorio = mostrarEscritorio;
+
+/* ---------- Save / Restore positions ---------- */
+function savePositions() {
+  const nodes = document.querySelectorAll('[data-window]');
+  const obj = {};
+  nodes.forEach(n => {
+    if (!n.id) return;
+    obj[n.id] = { left: n.style.left || '', top: n.style.top || '', display: n.style.display || '' };
+  });
+  if (persistState) localStorage.setItem(windowsStateKey, JSON.stringify(obj));
+  else sessionStorage.setItem(windowsStateKey, JSON.stringify(obj));
+}
+function resetPositions() {
+  document.querySelectorAll('[data-window]').forEach(n => { n.style.left=''; n.style.top=''; n.style.display=''; });
+  localStorage.removeItem(windowsStateKey);
+  sessionStorage.removeItem(windowsStateKey);
+}
+window.resetPositions = resetPositions;
+
+/* ---------- Quick search & browser ---------- */
+function quickSearch() {
+  const q = document.getElementById('buscador').value.trim();
+  if (!q) return;
+  const isUrl = /^[a-zA-Z0-9\-]+\./.test(q) || /^https?:\/\//i.test(q);
+  abrir('browser');
+  const input = document.getElementById('url-browser');
+  input.value = isUrl ? (q.startsWith('http') ? q : 'https://' + q) : ('https://www.google.com/search?q=' + encodeURIComponent(q));
+  cargarSitio();
+}
+function cargarSitio() {
+  const input = document.getElementById('url-browser');
+  const visor  = document.getElementById('visor-browser');
+  if (!input || !visor) return;
+  let url = input.value.trim();
+  if (!url) return;
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  // resource-friendly: unload previous content then load new
+  visor.src = 'about:blank';
+  setTimeout(() => { try { visor.src = url; } catch (e) { visor.src = 'about:blank'; } }, 50);
+}
+window.quickSearch = quickSearch;
+window.cargarSitio = cargarSitio;
+
+/* ---------- File API: leer archivos y directorios ---------- */
+function leerArchivos(e) {
+  const files = e.target.files;
+  const list = document.getElementById('file-list');
+  if (!list) return;
+  list.innerHTML = '';
+  Array.from(files).forEach(f => {
+    const item = document.createElement('div');
+    item.className = 'file-item';
+    const meta = document.createElement('div');
+    meta.innerHTML = `${f.name} <small style="color:#9aa">(${Math.round(f.size/1024)} KB)</small>`;
+    const btns = document.createElement('div');
+    const btnView = document.createElement('button');
+    btnView.textContent = 'Abrir';
+    btnView.onclick = () => {
+      if (f.type.startsWith('video/') || f.name.endsWith('.mp4')) {
+        cargarMediaFromFile(f); abrir('media');
+      } else if (f.type.startsWith('audio/') || f.name.endsWith('.mp3')) {
+        cargarMediaFromFile(f); abrir('media');
+      } else if (f.type.startsWith('text/') || f.name.endsWith('.md') || f.name.endsWith('.json')) {
+        const reader = new FileReader();
+        reader.onload = () => crearVentana(f.name, `<pre style="white-space:pre-wrap;max-height:240px;overflow:auto;">${escapeHtml(reader.result)}</pre>`);
+        reader.readAsText(f);
+      } else {
+        alert('Tipo no soportado para vista previa. Usa Reproductor para multimedia.');
+      }
+    };
+    btns.appendChild(btnView);
+    item.append(meta, btns);
+    list.appendChild(item);
+  });
+}
+window.leerArchivos = leerArchivos;
+
+async function openDirectory() {
+  if (!window.showDirectoryPicker) return alert('Abrir carpeta no soportado en este navegador');
+  try {
+    const dir = await window.showDirectoryPicker();
+    const list = document.getElementById('file-list');
+    list.innerHTML = '';
+    for await (const [name, handle] of dir) {
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      item.textContent = name;
+      list.appendChild(item);
+    }
+  } catch (e) {
+    console.warn('Directorio no abierto', e);
+  }
+}
+
+/* ---------- Media player (playlist + object URLs) ---------- */
+const playlist = [];
+function cargarMedia(e) {
+  const files = e.target.files;
+  Array.from(files).forEach(f => {
+    const url = URL.createObjectURL(f);
+    playlist.push({ src: url, name: f.name, type: f.type, file: f });
+  });
+  renderPlaylist();
+}
+function renderPlaylist() {
+  const container = document.getElementById('playlist');
+  if (!container) return;
+  container.innerHTML = '';
+  playlist.forEach((item, idx) => {
+    const el = document.createElement('div');
+    el.className = 'play-item';
+    el.innerHTML = `<div>${escapeHtml(item.name)}</div>`;
+    const controls = document.createElement('div');
+    const btnPlay = document.createElement('button'); btnPlay.textContent = '▶'; btnPlay.onclick = () => playIndex(idx);
+    const btnRemove = document.createElement('button'); btnRemove.textContent = '✖'; btnRemove.onclick = () => { URL.revokeObjectURL(item.src); playlist.splice(idx,1); renderPlaylist(); };
+    controls.append(btnPlay, btnRemove);
+    el.appendChild(controls);
+    container.appendChild(el);
+  });
+}
+function playIndex(i) {
+  const item = playlist[i];
+  if (!item) return;
+  const video = document.getElementById('video-player');
+  const audio = document.getElementById('audio-player');
+  if (item.type.startsWith('video/')) {
+    audio.style.display = 'none'; video.style.display = 'block'; video.src = item.src; video.play();
+  } else {
+    video.style.display = 'none'; audio.style.display = 'block'; audio.src = item.src; audio.play();
+  }
+}
+function cargarMediaFromFile(file) {
+  playlist.length = 0;
+  const url = URL.createObjectURL(file);
+  playlist.push({ src: url, name: file.name, type: file.type, file });
+  renderPlaylist();
+  playIndex(0);
+}
+window.cargarMedia = cargarMedia;
+
+/* ---------- Terminal emulada ---------- */
+const virtualFS = { '/home/user/readme.txt': 'Bienvenido a tu OS Web\n' };
+let termHistory = [], histIndex = 0;
+
+function initTerminal() {
+  const input = document.getElementById('term-input');
+  if (!input) return;
+  appendLine('Bienvenido a la terminal emulada. escribe "help" para ver comandos.');
+  input.focus();
+  input.addEventListener('keydown', onTermKey);
+}
+function onTermKey(e) {
+  const input = document.getElementById('term-input');
+  if (!input) return;
+  if (e.key === 'Enter') {
+    const raw = input.value;
+    input.value = '';
+    termHistory.push(raw);
+    histIndex = termHistory.length;
+    appendLine('user@webos:~$ ' + raw);
+    handleCommand(raw.trim());
+  } else if (e.key === 'ArrowUp') {
+    if (termHistory.length && histIndex > 0) input.value = termHistory[--histIndex];
+    e.preventDefault();
+  } else if (e.key === 'ArrowDown') {
+    if (termHistory.length && histIndex < termHistory.length - 1) input.value = termHistory[++histIndex] || '';
+    e.preventDefault();
+  }
+}
+function appendLine(txt) {
+  const o = document.getElementById('term-output');
+  if (!o) return;
+  const el = document.createElement('div');
+  el.className = 'term-line';
+  el.textContent = txt;
+  o.appendChild(el);
+  o.scrollTop = o.scrollHeight;
+}
+async function handleCommand(input) {
+  if (!input) return;
+  const parts = input.split(' ').filter(Boolean);
+  const cmd = parts[0];
+  const args = parts.slice(1);
+  switch (cmd) {
+    case 'help':
+      appendLine('Comandos: help, echo, date, ls, cat, touch, rm, clear, runjs, save, load, ssh');
+      break;
+    case 'echo':
+      appendLine(args.join(' '));
+      break;
+    case 'date':
+      appendLine(new Date().toString());
+      break;
+    case 'ls': {
+      const path = args[0] || '/home/user';
+      const list = Object.keys(virtualFS).filter(p => p.startsWith(path)).map(p => p.replace(path + '/', '')).filter(Boolean);
+      appendLine(list.length ? list.join('  ') : '(vacío)');
+      break;
+    }
+    case 'cat': {
+      const file = resolvePath(args[0]);
+      if (virtualFS[file]) appendLine(virtualFS[file]);
+      else appendLine('cat: archivo no encontrado: ' + file);
+      break;
+    }
+    case 'touch': {
+      const file = resolvePath(args[0] || ('/home/user/nuevo' + Date.now() + '.txt'));
+      virtualFS[file] = virtualFS[file] || '';
+      appendLine('Archivo creado: ' + file);
+      break;
+    }
+    case 'rm': {
+      const file = resolvePath(args[0]||'');
+      if (virtualFS[file]) { delete virtualFS[file]; appendLine('Eliminado ' + file); }
+      else appendLine('rm: archivo no existe');
+      break;
+    }
+    case 'clear':
+      document.getElementById('term-output').innerHTML = '';
+      break;
+    case 'runjs': {
+      const code = args.join(' ');
+      try { const res = eval(code); appendLine(String(res)); }
+      catch (err) { appendLine('Error JS: ' + err.message); }
+      break;
+    }
+    case 'save': {
+      const key = args[0] || 'fs';
+      localStorage.setItem(key, JSON.stringify(virtualFS));
+      appendLine('FS guardado en localStorage key=' + key);
+      break;
+    }
+    case 'load': {
+      const key = args[0] || 'fs';
+      const data = localStorage.getItem(key);
+      if (data) { Object.assign(virtualFS, JSON.parse(data)); appendLine('FS cargado desde ' + key); }
+      else appendLine('No existe key ' + key);
+      break;
+    }
+    case 'ssh':
+      appendLine('ssh: esta acción requiere un backend. Ver opciones: WebContainer o WebSocket+Docker.');
+      break;
+    default:
+      appendLine('comando no encontrado: ' + cmd);
+  }
+}
+function resolvePath(p) {
+  if (!p) return '/home/user';
+  if (p.startsWith('/')) return p;
+  return '/home/user/' + p;
+}
+
+/* ---------- Reloj (México Centro) ---------- */
+function actualizarReloj() {
+  const opts = { timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12:false, day:'2-digit', month:'2-digit', year:'numeric' };
+  const ahora = new Intl.DateTimeFormat('es-MX', opts).format(new Date());
+  const el = document.getElementById('reloj');
+  if (el) el.textContent = ahora;
+}
+
+/* ---------- FPS contador ---------- */
+let fps = 0;
+function initFPS() {
+  let last = performance.now(), frames = 0;
+  function raf(t) {
+    frames++;
+    if (t - last >= 1000) { fps = frames; frames = 0; last = t; const e = document.getElementById('fps'); if (e) e.textContent = fps + ' FPS'; }
+    requestAnimationFrame(raf);
+  }
+  requestAnimationFrame(raf);
+}
+
+/* ---------- Helpers ---------- */
+function escapeHtml(s) { if (typeof s !== 'string') return s; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ---------- Run remote example (WebSocket placeholder) ---------- */
+function runRemoteExample() {
+  appendLine('Intentando ejecutar "npm --version" de forma remota (ejemplo).');
+  try {
+    const ws = new WebSocket('wss://tu-backend.example/exec');
+    ws.onopen = () => { ws.send(JSON.stringify({ exec: { cmd: 'npm --version', cwd: '/workspace' } })); };
+    ws.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'stdout' || m.type === 'stderr') appendLine(m.data); if (m.type === 'exit') appendLine('Proceso finalizado con código ' + m.code); };
+    ws.onerror = err => appendLine('WebSocket error: ' + String(err));
+  } catch (e) { appendLine('No hay backend conectado. Configura WebSocket+Docker o usa WebContainers.'); }
+}
+window.runRemoteExample = runRemoteExample;
+
+/* ---------- Theme, Export/Import config ---------- */
+function applyTheme(mode) {
+  if (mode === 'light') document.documentElement.dataset.theme = 'light';
+  else document.documentElement.removeAttribute('data-theme');
+  localStorage.setItem('mi_os_theme', mode);
+}
+function exportConfig() {
+  const nodes = document.querySelectorAll('[data-window]');
+  const state = {};
+  nodes.forEach(n => { if (!n.id) return; state[n.id] = { left: n.style.left || '', top: n.style.top || '', display: n.style.display || '' }; });
+  const data = { windows: state, virtualFS, playlist };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'mi_os_export.json'; a.click();
+  setTimeout(()=> URL.revokeObjectURL(url), 2000);
+}
+function importConfig() {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'application/json';
+  inp.onchange = () => {
+    const f = inp.files[0]; if (!f) return;
+    const r = new FileReader(); r.onload = () => {
+      try {
+        const obj = JSON.parse(r.result);
+        if (obj.windows) {
+          Object.keys(obj.windows).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.style.left = obj.windows[id].left; el.style.top = obj.windows[id].top; el.style.display = obj.windows[id].display || ''; }
+          });
+        }
+        if (obj.virtualFS) Object.assign(virtualFS, obj.virtualFS);
+        if (obj.playlist && Array.isArray(obj.playlist)) obj.playlist.forEach(p => playlist.push(p));
+        renderPlaylist();
+        alert('Importación completa');
+      } catch (e) { alert('Archivo inválido'); }
+    };
+    r.readAsText(f);
+  };
+  inp.click();
+}
+window.exportConfig = exportConfig;
+window.importConfig = importConfig;
+
+/* ---------- Workspace (editor + preview) ---------- */
+const WS_KEYS = { html: 'ws_html_v1', css: 'ws_css_v1', js: 'ws_js_v1' };
+
+function abrirWorkspace(){
+  const existing = document.getElementById('workspace-window');
+  if (existing) { existing.style.display='block'; bringToFront(existing); return; }
+  const content = `
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div class="workspace-editor">
+        <div class="editor-col"><label style="font-weight:600">HTML</label><textarea id="ws-html" placeholder="<!-- HTML -->"></textarea></div>
+        <div class="editor-col"><label style="font-weight:600">CSS</label><textarea id="ws-css" placeholder="/* CSS */"></textarea></div>
+        <div class="editor-col"><label style="font-weight:600">JS</label><textarea id="ws-js" placeholder="// JS"></textarea></div>
+      </div>
+      <div class="workspace-controls">
+        <button class="small-ctrl" onclick="ws_save()">Guardar</button>
+        <button class="small-ctrl" onclick="ws_preview()">Preview</button>
+        <button class="small-ctrl" onclick="ws_openPopup()">Abrir en ventana nueva</button>
+        <button class="small-ctrl" onclick="ws_reset()">Reset</button>
+        <span style="color:var(--muted);margin-left:8px;font-size:13px;">Auto-guardado en localStorage</span>
+      </div>
+      <div style="margin-top:8px"><iframe id="ws-preview-frame" class="workspace-preview" sandbox="allow-scripts allow-forms allow-modals"></iframe></div>
+    </div>
+  `;
+  const id = crearVentana('Workspace', content);
+  const win = document.getElementById(id);
+  win.id = 'workspace-window';
+  registerWindowForTaskbar(win, { title: 'Workspace', icon: '🧩' });
+
+  const h = localStorage.getItem(WS_KEYS.html) || '<!-- HTML -->\\n<div id="app">Hola Workspace</div>';
+  const c = localStorage.getItem(WS_KEYS.css)  || 'body{background:transparent} #app{padding:12px;color:#042}';
+  const j = localStorage.getItem(WS_KEYS.js)   || 'console.log("Workspace ready");';
+  document.getElementById('ws-html').value = h;
+  document.getElementById('ws-css').value = c;
+  document.getElementById('ws-js').value = j;
+  ws_preview();
+
+  ['ws-html','ws-css','ws-js'].forEach(idtxt=>{
+    const el = document.getElementById(idtxt);
+    let timeout = null;
+    el.addEventListener('input', () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => { ws_save(); ws_preview(); }, 600);
+    });
+  });
+}
+function ws_save(){
+  const h = document.getElementById('ws-html')?.value || '';
+  const c = document.getElementById('ws-css')?.value || '';
+  const j = document.getElementById('ws-js')?.value || '';
+  localStorage.setItem(WS_KEYS.html, h);
+  localStorage.setItem(WS_KEYS.css, c);
+  localStorage.setItem(WS_KEYS.js, j);
+  console.info('Workspace guardado');
+}
+  /*
+function ws_buildDoc() {
+  const h = document.getElementById('ws-html')?.value || '';
+  const c = document.getElementById('ws-css')?.value || '';
+  const j = document.getElementById('ws-js')?.value || '';
+ 
+*/
+function ws_buildDoc() {
+  // Obtiene el contenido de HTML, CSS y JS desde los elementos correspondientes
+  const h = document.getElementById('ws-html')?.value || '';
+  const c = document.getElementById('ws-css')?.value || '';
+  const j = document.getElementById('ws-js')?.value || '';
+  
+  // Construye un documento HTML completo, con manejo de errores en el código JS
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>${c}</style>
+  </head>
+  <body>
+    ${h}
+    <script>
+      try {
+        ${j}
+      } catch(e) {
+        document.body.insertAdjacentHTML('beforeend', '<pre style="color:red;">Error: ' + String(e) + '</pre>');
+      }
+    <\/script>
+  </body>
+</html>`;
+}
+
+function ws_preview() {
+  const frame = document.getElementById('ws-preview-frame');
+  if (!frame) return;
+  const doc = ws_buildDoc();
+  try {
+    frame.srcdoc = doc; // Uso moderno y seguro para iframes
+  } catch (e) {
+    // Fallback para navegadores que no soportan srcdoc
+    const blob = new Blob([doc], {type: 'text/html'});
+    const url = URL.createObjectURL(blob);
+    frame.src = url;
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+}
+
+
+function ws_preview(){
+  const frame = document.getElementById('ws-preview-frame');
+  if (!frame) return;
+  const doc = ws_buildDoc();
+  try { frame.srcdoc = doc; } catch (e) {
+    const blob = new Blob([doc], {type:'text/html'}); const url = URL.createObjectURL(blob); frame.src = url; setTimeout(()=> URL.revokeObjectURL(url), 10000);
+  }
+}
+function ws_openPopup() {
+  const doc = ws_buildDoc();
+  const blob = new Blob([doc], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank', 'noopener,noreferrer');
+  setTimeout(()=> URL.revokeObjectURL(url), 5000);
+}
+function ws_reset() {
+  if (!confirm('Resetear contenido del workspace?')) return;
+  localStorage.removeItem(WS_KEYS.html); localStorage.removeItem(WS_KEYS.css); localStorage.removeItem(WS_KEYS.js);
+  document.getElementById('ws-html').value=''; document.getElementById('ws-css').value=''; document.getElementById('ws-js').value='';
+  ws_preview();
+}
+  
+window.abrirWorkspace = abrirWorkspace;
+window.ws_save = ws_save;
+window.ws_preview = ws_preview;
+window.ws_openPopup = ws_openPopup;
+window.ws_reset = ws_reset;
+
+/* ---------- Export lista de funciones principales (para referencia runtime) ---------- */
+window.MI_OS_FUNCS = {
+  abrir, cerrar, minimizar, restore, crearVentana, startDrag, registerWindowForTaskbar,
+  toggleMinimize, mostrarEscritorio, savePositions, resetPositions, quickSearch,
+  cargarSitio, leerArchivos, openDirectory, cargarMedia, playIndex, initTerminal,
+  runRemoteExample, exportConfig, importConfig, abrirWorkspace, ws_save, ws_preview
+};
+</script>
+</body>
+</html>
+
+<!-------------------------
+---
+
+Archivos listos: guarda index.html, OS.css y OS.js en la misma carpeta y abre index.html en tu navegador.
+
+Sugerencias finales cortas:
+- Usa textarea para editor si quieres bajo consumo; integra CodeMirror/Monaco solo si tu máquina lo soporta.  
+- Limita iframes activos: la lógica minimiza y guarda src en data-attribute para liberar recursos.  
+- Para GitHub Pages: usa repositorio privado si no quieres publicar código; de lo contrario minifica JS para ofuscar pero no esconder secretos.  
+- Para ejecutar npm en remoto: monta backend WebSocket + Docker o usa StackBlitz WebContainers.
+
+¿Quieres que te entregue una versión ZIP lista para descargar (pegado aquí en partes) o que agregue mini-previsualización de la "cantidad de iframes activas" y límite configurables?
